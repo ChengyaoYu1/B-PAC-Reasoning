@@ -2,13 +2,11 @@
 
 Official code repository for the ICML 2026 paper:
 
-**Anytime Safe PAC Efficient Reasoning**  
-Chengyao Yu, Hao Zeng, Youxin Zhu, Jianguo Huang, Huajun Zeng, and Bingyi Jing
+Chengyao Yu, Hao Zeng, Youxin Zhu, Jianguo Huang, Huajun Zeng, and Bingyi Jing. **Anytime Safe PAC Efficient Reasoning**. 
 
 ## Overview
 
 Large Reasoning Models (LRMs) achieve strong performance on complex reasoning tasks, but they often incur substantial computational cost and latency. This paper studies how to safely improve reasoning efficiency by adaptively routing queries between a thinking model and a non-thinking model.
-
 We propose **Betting PAC (B-PAC) reasoning**, an anytime-valid and model-agnostic framework for efficient online reasoning under partial feedback. B-PAC dynamically updates the routing threshold through a betting-based procedure and provides rigorous performance-loss control relative to the thinking model.
 
 ## Status
