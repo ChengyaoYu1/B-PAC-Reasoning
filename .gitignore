@@ -216,3 +216,26 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project outputs and local data
+data/
+outputs/
+results/
+result_dirs/
+result_dirs_*/
+*_result.jsonl
+*.parquet
+*.ckpt
+*.safetensors
+*.pt
+*.pth
+
+# Secrets
+.env*
+!.env.example
+*api_key*
+*API_KEY*
+
+# Notebook execution noise
+*.ipynb
+.ipynb_checkpoints/

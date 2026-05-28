@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bpac-reasoning"
+version = "0.1.0"
+description = "Anytime Safe PAC Efficient Reasoning"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Chengyao Yu" },
+  { name = "Hao Zeng" },
+  { name = "Youxin Zhu" },
+  { name = "Jianguo Huang" },
+  { name = "Huajun Zeng" },
+  { name = "Bingyi Jing" },
+]
+dependencies = [
+  "numpy>=1.23",
+  "pandas>=1.5",
+  "tqdm",
+]
+
+[tool.setuptools.packages.find]
+include = ["bpac*"]
