@@ -1,75 +1,79 @@
+<div align="center">
+
 # Anytime Safe PAC Efficient Reasoning
 
-Official code for the ICML 2026 paper:
+**Official implementation for the ICML 2026 paper**
 
-**Anytime Safe PAC Efficient Reasoning**  
-Chengyao Yu, Hao Zeng, Youxin Zhu, Jianguo Huang, Huajun Zeng, and Bingyi Jing.
+Chengyao Yu, Hao Zeng, Youxin Zhu, Jianguo Huang, Huajun Zeng, Bingyi Jing
 
-Paper: https://arxiv.org/abs/2601.22446
+[![arXiv](https://img.shields.io/badge/arXiv-2601.22446-b31b1b.svg)](https://arxiv.org/abs/2601.22446)
+[![Conference](https://img.shields.io/badge/ICML-2026-4b8bbe.svg)](https://icml.cc/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](pyproject.toml)
+[![vLLM](https://img.shields.io/badge/Inference-vLLM-green.svg)](https://github.com/vllm-project/vllm)
 
-This repository contains the B-PAC reasoning simulator, local vLLM inference
-scripts, benchmark evaluation utilities, and command-line experiment runners.
+</div>
 
-## Structure
+## Overview
+
+Large Reasoning Models are accurate but expensive. B-PAC reasoning dynamically
+routes each query between a non-thinking model and a thinking model, while
+controlling anytime performance loss under partial feedback.
+
+This repository provides:
+
+- local vLLM generation scripts for thinking and non-thinking model outputs;
+- benchmark evaluation utilities for MATH, MMLU-Pro, BBH, and Magpie;
+- B-PAC, IPS+Hoeff, and O-Naive simulation code;
+- scripts for stationary and non-stationary experiment reproduction.
+
+## News
+
+- `2026-01-30`: Paper released on arXiv: [2601.22446](https://arxiv.org/abs/2601.22446).
+- `2026`: Accepted by ICML 2026.
+
+## Project Structure
 
 ```text
-bpac/                 Python package for B-PAC, IPS+Hoeff, and O-Naive
-examples/             Minimal runnable examples
-scripts/              Data construction, LLM-as-judge, and experiment runners
-zeroeval/             Local vLLM inference and benchmark evaluation utilities
+B-PAC-Reasoning/
+|-- bpac/                         # B-PAC, IPS+Hoeff, O-Naive, simulation API
+|-- scripts/
+|   |-- build_simulation_table.py  # Convert evaluated outputs to B-PAC tables
+|   |-- run_bpac_experiment.py     # Stationary experiments
+|   |-- run_nonstationary_experiment.py
+|   |-- llm_as_judge.py            # Magpie LLM-as-judge scoring
+|   `-- generate_baseline_responses.py
+|-- zeroeval/                      # Local vLLM inference and answer evaluation
+|-- requirements.txt
+`-- README.md
 ```
 
 Generated outputs, parsed result directories, datasets, caches, and API keys are
-intentionally not committed.
+intentionally excluded from version control.
 
-## Installation
+## Environment
 
-The full reproduction environment uses local vLLM inference.
+The paper uses local vLLM inference, not an API server, for model generation.
+Install the environment on a CUDA Linux machine.
 
 ```bash
 git clone <repo-url>
 cd B-PAC-Reasoning
-python -m venv .venv
-source .venv/bin/activate
+conda create -n bpac python=3.10 -y
+conda activate bpac
 pip install -e .
 pip install -r requirements.txt
 ```
 
-Install on a CUDA Linux machine for vLLM runs. If your cluster uses a fixed
-CUDA/PyTorch stack, install the matching `torch` wheel first, then install the
-remaining requirements.
-
-## Quick Start
-
-Run a toy B-PAC simulation:
-
-```bash
-python examples/minimal_simulation.py
-```
-
-Use the Python API:
-
-```python
-import pandas as pd
-from bpac import BPACConfig, run_simulation
-
-data = pd.DataFrame(
-    {
-        "uncertainty": [0.1, 0.8],
-        "instant_correct": [1, 0],
-        "expert_correct": [1, 1],
-        "instant_token": [100, 120],
-        "expert_token": [1200, 1400],
-    }
-)
-
-logs, model = run_simulation(data, BPACConfig(epsilon=0.08, alpha=0.1, seed=0))
-print(logs.tail())
-```
+If your cluster has a fixed CUDA/PyTorch stack, install the matching `torch`
+wheel first and then run `pip install -r requirements.txt`.
 
 ## Paper Settings
 
-The B-PAC defaults match Appendix C.3:
+### B-PAC
+
+The default arguments in `scripts/run_bpac_experiment.py` and
+`scripts/run_nonstationary_experiment.py` match Appendix C.3.
 
 | Parameter | Argument | Default |
 | --- | --- | --- |
@@ -83,52 +87,32 @@ The B-PAC defaults match Appendix C.3:
 
 The threshold grid is `U={0,0.001,0.002,...,1}`.
 
-Figure 2 uses `--epsilon 0.05 --alpha 0.1`. The main MATH/MMLU-Pro table and
-the online-method comparisons use `--epsilon 0.08 --alpha 0.1`.
+### Decoding
 
-Appendix C.2 reports the local decoding settings:
+The local vLLM scripts follow Appendix C.2.
 
-| Model variant | Temperature | Top-p | Top-k | Min-p |
-| --- | ---: | ---: | ---: | ---: |
-| Qwen3-4B-Instruct-2507 | `0.7` | `0.8` | `20` | `0` |
-| Qwen3-4B-Thinking-2507 | `0.6` | `0.95` | `20` | `0` |
+| Model variant | Script | Temperature | Top-p | Top-k | Min-p |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Qwen3-4B-Instruct-2507 | `zero_eval_local.sh` | `0.7` | `0.8` | `20` | `0` |
+| Qwen3-4B-Thinking-2507 | `zero_eval_local_thinking*.sh` | `0.6` | `0.95` | `20` | `0` |
 
-`zeroeval/zero_eval_local.sh` is configured for the instruct model defaults.
-`zeroeval/zero_eval_local_thinking*.sh` is configured for the thinking model
-defaults. These scripts start vLLM inside `zeroeval/src/unified_infer.py`; no
-external API server is required for model generation.
+## Reproduction Pipeline
 
-## Data Format
+### 1. Configure Dataset Paths
 
-B-PAC simulation consumes a CSV/JSON/JSONL table with:
+For local parquet datasets, set the corresponding environment variables before
+running `zeroeval`:
 
-| Column | Meaning |
-| --- | --- |
-| `uncertainty` | Routing uncertainty score in `[0, 1]`; larger means more uncertain. |
-| `instant_correct` | `1` if the non-thinking model answer is correct; verifiable tasks. |
-| `expert_correct` | `1` if the thinking model answer is correct; verifiable tasks. |
-| `loss` | Optional bounded loss in `[0, 1]`. If present, the simulator uses this directly. |
-| `instant_token` | Token cost of the non-thinking model answer. |
-| `expert_token` | Token cost of the thinking model answer. |
-
-For MATH, MMLU-Pro, and BBH, the paper keeps instances where the thinking model
-is correct. For Magpie, it keeps instances where the thinking model has judge
-score at least as high as the non-thinking model.
-
-For Magpie, `scripts/build_simulation_table.py --task magpie` constructs the
-paper loss:
-
-```text
-sqrt(max(0, score_expert - score_instant) / score_range)
+```bash
+export ZEROEVAL_MATH_PATH=/path/to/math.parquet
+export ZEROEVAL_MMLUPRO_PATH=/path/to/mmlupro_reconstructed.parquet
+export ZEROEVAL_BBH_PATH=/path/to/bbh.parquet
+export ZEROEVAL_MAGPIE_PATH=/path/to/magpie_reconstructed.parquet
 ```
 
-The default `score_range` is `9`, matching judge scores from 1 to 10.
+### 2. Generate Model Outputs With Local vLLM
 
-## Reproduction
-
-### 1. Generate Responses With Local vLLM
-
-Run thinking and non-thinking models with the ZeroEval scripts:
+Run the thinking model:
 
 ```bash
 cd zeroeval
@@ -139,7 +123,11 @@ bash zero_eval_local_thinking.sh \
   -p qwen3-think \
   -s 1 \
   -g 0
+```
 
+Run the non-thinking model:
+
+```bash
 bash zero_eval_local.sh \
   -d math \
   -m /path/to/Qwen3-4B-Instruct-2507 \
@@ -149,32 +137,27 @@ bash zero_eval_local.sh \
 ```
 
 Use `zero_eval_local_thinking_3.sh` for runs that start from index 3000.
+The scripts invoke `zeroeval/src/unified_infer.py`, which loads vLLM directly.
 
-The local dataset parquet paths are configured through environment variables in
-`zeroeval/src/task_configs.py`, for example:
+### 3. Evaluate Generated Answers
 
-```bash
-export ZEROEVAL_MATH_PATH=/path/to/math.parquet
-export ZEROEVAL_MMLUPRO_PATH=/path/to/mmlupro_reconstructed.parquet
-export ZEROEVAL_BBH_PATH=/path/to/bbh.parquet
-export ZEROEVAL_MAGPIE_PATH=/path/to/magpie_reconstructed.parquet
-```
+For MATH, MMLU-Pro, and BBH, use the evaluation scripts under
+`zeroeval/src/evaluation/` to produce parsed result files with correctness labels.
 
-### 2. Evaluate Answers
-
-For verifiable benchmarks, use the scripts in `zeroeval/src/evaluation`.
-
-For Magpie, run LLM-as-judge scoring after generation:
+For Magpie, score both thinking and non-thinking outputs with LLM-as-judge:
 
 ```bash
 export OPENAI_API_KEY=...
 export OPENAI_BASE_URL=https://your-compatible-api/v1  # optional
-python scripts/llm_as_judge.py --json zeroeval/result_dirs/magpie/qwen3-ins.json
+
+python scripts/llm_as_judge.py \
+  --json zeroeval/result_dirs/magpie/qwen3-think.json \
+         zeroeval/result_dirs/magpie/qwen3-ins.json
 ```
 
-### 3. Build Simulation Tables
+### 4. Build B-PAC Simulation Tables
 
-For MATH, MMLU-Pro, or BBH:
+For verifiable tasks:
 
 ```bash
 python scripts/build_simulation_table.py \
@@ -196,7 +179,26 @@ python scripts/build_simulation_table.py \
   --output outputs/magpie_table.csv
 ```
 
-### 4. Run Stationary Experiments
+The required table columns are:
+
+| Column | Description |
+| --- | --- |
+| `uncertainty` | Routing uncertainty score in `[0,1]`; larger means more uncertain. |
+| `instant_correct` | Correctness of the non-thinking model for verifiable tasks. |
+| `expert_correct` | Correctness of the thinking model for verifiable tasks. |
+| `loss` | Optional bounded loss in `[0,1]`; used directly if present. |
+| `instant_token` | Token cost of the non-thinking model output. |
+| `expert_token` | Token cost of the thinking model output. |
+
+For Magpie, the script constructs the paper loss:
+
+```text
+sqrt(max(0, score_expert - score_instant) / score_range)
+```
+
+The default `score_range` is `9`, matching scores from 1 to 10.
+
+### 5. Run Stationary Experiments
 
 ```bash
 python scripts/run_bpac_experiment.py \
@@ -208,12 +210,19 @@ python scripts/run_bpac_experiment.py \
   --alpha 0.1
 ```
 
-Online baselines are available with `--method ips` and `--method naive`.
+Online baselines:
 
-### 5. Run The Non-Stationary Experiment
+```bash
+python scripts/run_bpac_experiment.py --input outputs/mmlupro_table.csv --method ips
+python scripts/run_bpac_experiment.py --input outputs/mmlupro_table.csv --method naive
+```
+
+### 6. Run The Non-Stationary Experiment
 
 Figure 2 uses a distribution-shift stream with 1,500 MMLU-Pro samples followed
 by 3,000 BBH samples, with `epsilon=0.05` and `alpha=0.1`.
+
+Build the MMLU-Pro and BBH tables first, then run:
 
 ```bash
 python scripts/run_nonstationary_experiment.py \
@@ -231,11 +240,11 @@ python scripts/run_nonstationary_experiment.py \
 ```
 
 The script samples within each segment for every seed and concatenates the two
-segments in order, preserving the non-stationary distribution shift.
+segments in order, preserving the distribution shift.
 
-## Baseline Response Generation
+## Baselines
 
-CoD and NoThinking responses can be generated with:
+Generate CoD responses:
 
 ```bash
 python scripts/generate_baseline_responses.py \
@@ -247,7 +256,8 @@ python scripts/generate_baseline_responses.py \
   --gpu-ids 0
 ```
 
-Use `--mode no-thinking` for the NoThinking baseline.
+Generate NoThinking responses by replacing `--mode cod` with
+`--mode no-thinking`.
 
 ## Citation
 
@@ -264,6 +274,11 @@ Use `--mode no-thinking` for the NoThinking baseline.
 
 Proceedings metadata can replace this entry after the official ICML publication
 entry is available.
+
+## Acknowledgements
+
+This repository includes adapted components from ZeroEval. We also rely on vLLM,
+Hugging Face Transformers, and Qwen3 for local generation.
 
 ## License
 
