@@ -92,6 +92,8 @@ def build_verifiable(args: argparse.Namespace) -> pd.DataFrame:
     expert = read_many(args.expert_json)
     instant = read_table(args.instant_json)
     join_key = choose_join_key(expert, instant, args.join_key)
+    expert = expert.drop_duplicates(subset=[join_key], keep="first")
+    instant = instant.drop_duplicates(subset=[join_key], keep="first")
 
     if args.filter_expert_correct:
         expert = expert[expert[args.expert_correct_column].apply(as_bool_correct) == 1]

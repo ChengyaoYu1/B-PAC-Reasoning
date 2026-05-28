@@ -70,7 +70,7 @@ class BPAC:
         denom[denom == 0] = 1e-9
         lambda_raw = self.sum_D / denom
 
-        M_t = max(self.cfg.epsilon, ((1.0 - rho_min) / rho_min) - self.cfg.epsilon)
+        M_t = max(self.cfg.epsilon, ((1.0 - rho_min) / self.current_rho) - self.cfg.epsilon)
         upper_bound = self.cfg.c_clip / M_t
         lambda_t = np.clip(lambda_raw, 0, upper_bound)
 
